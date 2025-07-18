@@ -1,0 +1,24 @@
+[
+    {
+        "code": "课程编号",
+        "progress": "课程进度",
+        "content": "课程内容",
+        "time": [9, 11],
+        "state": "已结束",
+        "discuss_state": "无效",
+        "users_over": ["用户1"],
+        "users_leave": ["请假用户1"],
+        "discuss_content": ["课评1"]
+    },
+    {
+        "code": "课程编号",
+        "progress": "课程进度",
+        "content": "课程内容",
+        "time": [14, 16],
+        "state": "已结束",
+        "discuss_state": "无效",
+        "users_over": ["用户2"],
+        "users_leave": ["请假用户2"],
+        "discuss_content": ["课评2"]
+    }
+]
