@@ -19,7 +19,6 @@ def run():
         )
 
         cur_page = context.new_page()
-        cur_page.pause()
 
         login_page = LoginPage(cur_page)
         login_page.login(USER_NAME, USER_PASSWORD)
