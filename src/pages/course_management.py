@@ -287,8 +287,6 @@ class CourseManagement:
         state: str,
     ) -> None:
         for user_name, discuss_content in zip(user_names, discuss_contents):
-            if user_name == '邝钟焱' or user_name == '李苇森':
-                continue
             self.set_user_state_discuss(
                 course_code,
                 the_progress_of_the_curriculum,
