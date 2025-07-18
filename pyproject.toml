@@ -1,0 +1,42 @@
+[project]
+name = "evaluation"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "playwright>=1.53.0",
+    "pydantic>=2.11.7",
+    "pytest>=8.4.1",
+    "rich>=14.0.0",
+]
+
+
+[tool.ruff]
+# --- 基础设置 ---
+line-length = 88 # 与 Black 对齐
+target-version = "py312" # 最低 Python 版本
+extend-exclude = [
+    "migrations/", # Django 迁移文件
+    "*.pyi",       # 类型存根
+]
+
+# --- 格式化规则 ---
+[tool.ruff.format]
+quote-style = "single"       # 单引号更紧凑
+indent-style = "space"
+line-ending = "lf"
+docstring-code-format = true # 让 docstring 里的代码也格式化
+
+# --- 检查规则 ---
+[tool.ruff.lint]
+select = [
+    "E", # pycodestyle 错误
+    "W", # pycodestyle 警告
+    "F", # Pyflakes
+    # "I", # isort（自动排序 import）
+]
+ignore = [
+    "E501", # 行过长（由格式化器处理）
+    "W291", # 行尾空白（已由格式化器删除）
+]

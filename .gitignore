@@ -1,0 +1,39 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+.python-version
+*.log
+*.sqlite
+*.db
+
+# Virtual environments
+.venv/
+env/
+venv/
+ENV/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Local configuration
+config.toml
+.env
+.env.local
+secrets.*
+credentials.*
+
+# Test and coverage
+.coverage
+htmlcov/
+.pytest_cache/
+
+# Other
+courses.json
