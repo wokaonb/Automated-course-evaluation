@@ -1,8 +1,10 @@
+from typing import Literal
 from playwright.sync_api import Page, TimeoutError as PWTimeout
 import re
 from config import MANAGER_URL
 from err import BizError
 from utils import format_time_with_today, logging
+from pydantic import validate_call
 
 logger = logging.getLogger('manage_bot')
 
@@ -11,24 +13,44 @@ class CourseManagement:
     def __init__(self, page: Page):
         self.page = page
 
-    # 跳转指定目录
-    def to_management(self, to_name: str) -> None:
+    ALLOWED_MANAGEMENT = Literal[
+        '试听课登记表',
+        '学生知识点矩阵展示',
+        '课程人员',
+        '课程进度',
+        '课程进度人员',
+        '课后反馈中心',
+    ]
+
+    @validate_call
+    def to_management(self, to_name: ALLOWED_MANAGEMENT) -> None:
+        """跳转指定目录"""
         self.page.goto(MANAGER_URL)
         self.page.locator('div').filter(has_text=re.compile(r'^课程管理$')).click()
         self.page.get_by_role('link', name=to_name, exact=True).click()
 
-    # 添加班级进度
+    ALLOWED_COURSE_STATE = Literal[
+        '请选择',
+        '无效',
+        '未开始',
+        '进行中',
+        '已结束',
+    ]
+
+    @validate_call
     def add_progress(
         self,
         course_code: str,
         the_progress_of_the_curriculum: str,
         begin_time: int,
         end_time: int,
-        course_state: str,
+        course_state: ALLOWED_COURSE_STATE,
         course_content: str,
     ) -> None:
+        """添加班级进度"""
         try:
             self.to_management('课程进度')
+
             self.page.get_by_role('button', name='图标: plus 新增').click()
 
             # 课程编号
@@ -68,6 +90,7 @@ class CourseManagement:
 
             # 确定
             self.page.get_by_role('button', name='确 定').click()
+            self.page.wait_for_load_state('networkidle')
             logger.info(
                 f'{course_code}-{the_progress_of_the_curriculum} 课程进度添加成功'
             )
@@ -76,7 +99,6 @@ class CourseManagement:
                 f'{course_code}-{the_progress_of_the_curriculum} 课程进度添加失败'
             )
 
-    # 批量增加班级人员
     def add_members(
         self,
         course_code: str,
@@ -92,11 +114,14 @@ class CourseManagement:
                 the_progress_of_the_curriculum
             )
             self.page.get_by_role('button', name='图标: search 查询').click()
-            self.page.get_by_role('cell', name=course_code).first.click()
+            self.page.get_by_label('课程进度').get_by_role(
+                'cell', name=course_code
+            ).click()
             self.page.get_by_label('课程进度').get_by_role(
                 'button', name='确 定'
             ).click()
             self.page.get_by_role('button', name='确 定').click()
+            self.page.wait_for_load_state('networkidle')
             logger.info(
                 f'{course_code}-{the_progress_of_the_curriculum} 班级人员添加成功'
             )
@@ -105,13 +130,14 @@ class CourseManagement:
                 f'{course_code}-{the_progress_of_the_curriculum} 班级人员添加失败'
             )
 
+    @validate_call
     def add_schedule(
         self,
         course_code: str,
         the_progress_of_the_curriculum: str,
         begin_time: int,
         end_time: int,
-        course_state: str,
+        course_state: ALLOWED_COURSE_STATE,
         course_content: str,
     ) -> None:
         """一键添加班级"""
@@ -132,12 +158,21 @@ class CourseManagement:
             the_progress_of_the_curriculum,
         )
 
+    ALLOWED_USER_STATE = Literal[
+        '请选择',
+        '无效',
+        '完成课程',
+        '请假',
+        '请假已补课',
+    ]
+
+    @validate_call
     def set_user_state(
         self,
         course_code: str,
         the_progress_of_the_curriculum: str,
         user_name: str,
-        state: str,
+        state: ALLOWED_USER_STATE,
     ) -> None:
         """设置用户状态"""
         try:
@@ -146,6 +181,7 @@ class CourseManagement:
             # 查找当前班的人
             self.page.get_by_role('button', name='图标: filter 高级查询').click()
 
+            self.page.wait_for_timeout(1000)
             self.page.locator('div').filter(
                 has_text=re.compile(r'^选择查询字段$')
             ).locator('svg').click()
@@ -158,7 +194,9 @@ class CourseManagement:
             )
 
             self.page.get_by_role('button', name='图标: search 查询').click()
-            self.page.get_by_role('cell', name=course_code).first.click()
+            self.page.get_by_label('课程进度').get_by_role(
+                'cell', name=course_code
+            ).click()
             self.page.get_by_role('button', name='确 定').click()
 
             self.page.get_by_role(
@@ -186,12 +224,13 @@ class CourseManagement:
 
             self.page.get_by_text('编辑').nth(1).click()
 
+            self.page.wait_for_timeout(1000)
             self.page.get_by_role('combobox').filter(has_text='请选择上课状态').click()
             self.page.get_by_role('option', name=state, exact=True).locator(
                 'span'
             ).click()
             self.page.get_by_role('button', name='确 定').click()
-
+            self.page.wait_for_load_state('networkidle')
             logger.info(
                 f'{course_code}-{the_progress_of_the_curriculum}-{user_name} 班级状态设置为{state}'
             )
@@ -230,7 +269,6 @@ class CourseManagement:
                 '请假',
             )
 
-    # 批量增加班级人员课评
     def add_discuss(
         self,
         course_code: str,
@@ -246,11 +284,15 @@ class CourseManagement:
                 the_progress_of_the_curriculum
             )
             self.page.get_by_role('button', name='图标: search 查询').click()
-            self.page.get_by_role('cell', name=course_code).first.click()
+
+            self.page.get_by_label('课程进度').get_by_role(
+                'cell', name=course_code
+            ).click()
             self.page.get_by_label('课程进度').get_by_role(
                 'button', name='确 定'
             ).click()
             self.page.get_by_role('button', name='确 定').click()
+            self.page.wait_for_load_state('networkidle')
             logger.info(
                 f'{course_code}-{the_progress_of_the_curriculum} 班级人员课评添加成功'
             )
@@ -259,6 +301,13 @@ class CourseManagement:
                 f'{course_code}-{the_progress_of_the_curriculum} 班级人员课评添加失败'
             )
 
+    ALLOWED_DISCUSS_STATE = Literal[
+        '请选择',
+        '审核中（未发送）',
+        '无效',
+    ]
+
+    @validate_call
     def set_user_state_discuss(
         self,
         course_code: str,
@@ -266,7 +315,7 @@ class CourseManagement:
         course_content: str,
         discuss_content: str,
         user_name: str,
-        state: str,
+        state: ALLOWED_DISCUSS_STATE,
     ) -> None:
         """设置人员课评状态"""
         try:
@@ -287,7 +336,9 @@ class CourseManagement:
             )
 
             self.page.get_by_role('button', name='图标: search 查询').click()
-            self.page.get_by_role('cell', name=course_code).first.click()
+            self.page.get_by_label('课程进度').get_by_role(
+                'cell', name=course_code
+            ).click()
             self.page.get_by_role('button', name='确 定').click()
 
             self.page.get_by_role(
@@ -328,14 +379,16 @@ class CourseManagement:
             self.page.get_by_role('textbox', name='请输入标题').fill(course_content)
 
             self.page.get_by_role('button', name='确 定').click()
+            self.page.wait_for_load_state('networkidle')
             logger.info(
                 f'{course_code}-{the_progress_of_the_curriculum}-{user_name} 课评状态设置{state}'
             )
         except PWTimeout:
             raise BizError(
-                f'{course_code}-{the_progress_of_the_curriculum} 课评状态设置失败'
+                f'{course_code}-{the_progress_of_the_curriculum}-{user_name} 课评状态设置失败'
             )
 
+    @validate_call
     def set_user_state_discusses(
         self,
         course_code: str,
@@ -343,8 +396,11 @@ class CourseManagement:
         course_content: str,
         discuss_contents: list[str],
         user_names: list[str],
-        state: str,
+        state: ALLOWED_DISCUSS_STATE,
     ) -> None:
+        if len(user_names) != len(discuss_contents):
+            raise ValueError('用户和课评对不上')
+
         for user_name, discuss_content in zip(user_names, discuss_contents):
             self.set_user_state_discuss(
                 course_code,

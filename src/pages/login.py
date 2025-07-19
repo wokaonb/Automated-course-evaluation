@@ -5,7 +5,7 @@ from config import BASE_URL
 from err import LoginExpired, RetryableError
 from utils import recognize_captcha, retry, logging
 
-logger = logging.getLogger("login_bot")
+logger = logging.getLogger('login_bot')
 
 
 class LoginPage:
@@ -38,7 +38,7 @@ class LoginPage:
         self.page.get_by_role('button', name='确 定').click()
 
         # 判断是否登录成功
-        self.page.wait_for_timeout(1000)
+        self.page.wait_for_timeout(3000)
         if self.page.get_by_role('link', name='logoJeecg Boot').count():
             raise LoginExpired('登录失效，需重新登录')
 

@@ -1,7 +1,6 @@
 import json
 from pathlib import Path
 from playwright.sync_api import sync_playwright
-
 from utils import logger
 from config import USER_NAME, USER_PASSWORD
 from pages import CourseManagement, LoginPage
@@ -11,7 +10,7 @@ from err import BizError, LoginExpired
 
 def run() -> None:
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=False)
+        browser = p.chromium.launch(headless=False, slow_mo=300)
         context = browser.new_context(
             viewport={
                 'width': 1280,
@@ -19,46 +18,46 @@ def run() -> None:
             },
             locale='zh-CN',
         )
+        context.set_default_timeout(15000)
+        with context.new_page() as cur_page:
+            login_page = LoginPage(cur_page)
+            login_page.login(USER_NAME, USER_PASSWORD)
 
-        login_page_raw = context.new_page()
-        login_page = LoginPage(login_page_raw)
-        login_page.login(USER_NAME, USER_PASSWORD)
-        login_page_raw.close()
+        courses_raw = json.loads(Path('courses.json').read_text(encoding='utf-8'))
+        courses = [CourseModel(**course_raw) for course_raw in courses_raw]
 
-        # manager_page = CourseManagement(cur_page)
+        for course in courses:
+            with context.new_page() as cur_page:
+                manager_page = CourseManagement(cur_page)
+                cur_page.pause()
+                manager_page.add_schedule(
+                    course.code,
+                    course.progress,
+                    course.time[0],
+                    course.time[1],
+                    course.state,
+                    course.content,
+                )
 
-        # courses_raw = json.loads(Path('courses.json').read_text(encoding='utf-8'))
-        # courses = [CourseModel(**course_raw) for course_raw in courses_raw]
+                manager_page.set_users_over(
+                    course.code,
+                    course.progress,
+                    course.users_over,
+                )
+                manager_page.set_users_leave(
+                    course.code,
+                    course.progress,
+                    course.users_leave,
+                )
 
-        # for course in courses:
-        #     manager_page.add_schedule(
-        #         course.code,
-        #         course.progress,
-        #         course.time[0],
-        #         course.time[1],
-        #         course.state,
-        #         course.content,
-        #     )
-
-        #     manager_page.set_users_over(
-        #         course.code,
-        #         course.progress,
-        #         course.users_over,
-        #     )
-        #     manager_page.set_users_leave(
-        #         course.code,
-        #         course.progress,
-        #         course.users_leave,
-        #     )
-
-        #     manager_page.set_user_state_discusses(
-        #         course.code,
-        #         course.progress,
-        #         course.content,
-        #         course.discuss_content,
-        #         course.users_over,
-        #         course.discuss_state,
-        #     )
+                manager_page.set_user_state_discusses(
+                    course.code,
+                    course.progress,
+                    course.content,
+                    course.discuss_content,
+                    course.users_over,
+                    course.discuss_state,
+                )
 
         browser.close()
 
