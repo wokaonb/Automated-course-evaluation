@@ -1,42 +1,45 @@
-from playwright.sync_api import Page
+from pathlib import Path
+from playwright.sync_api import Page, TimeoutError as PWTimeout
 
 from config import BASE_URL
-from utils import recognize_captcha
+from err import LoginExpired, RetryableError
+from utils import recognize_captcha, retry, logging
+
+logger = logging.getLogger("login_bot")
 
 
 class LoginPage:
     def __init__(self, page: Page) -> None:
         self.page = page
 
-    # 访问登录页
-    def get_captcha(self, captcha_path: str) -> bytes:
-        self.page.goto(BASE_URL)
-        captcha = self.save_captcha(captcha_path)
-        return captcha
-
     # 登录主流程
+    @retry(max_times=3, on_errors=(RetryableError, PWTimeout))
     def login(self, username: str, password: str) -> None:
-        for _ in range(3):
-            # 获取并识别验证码
-            captcha_path = 'captcha.png'
-            self.get_captcha(captcha_path)
+        try:
+            self.page.goto(BASE_URL, timeout=30_000)
+        except PWTimeout as e:
+            raise RetryableError('访问登录页超时') from e
+
+        # 获取并识别验证码
+        captcha_path = Path('captcha.png')
+        try:
+            self.page.get_by_role('tabpanel').get_by_role('img').screenshot(
+                path=captcha_path
+            )
             code = recognize_captcha(captcha_path)
+        except Exception as e:
+            logger.warning(f'验证码识别失败: {e}')
+            raise RetryableError('验证码识别失败') from e
 
-            # 填表并登录
-            self.page.get_by_placeholder('请输入帐户名').fill(username)
-            self.page.get_by_placeholder('请输入密码').fill(password)
-            self.page.get_by_placeholder('请输入验证码').fill(code)
-            self.page.get_by_role('button', name='确 定').click()
+        # 填表并登录
+        self.page.get_by_placeholder('请输入帐户名').fill(username)
+        self.page.get_by_placeholder('请输入密码').fill(password)
+        self.page.get_by_placeholder('请输入验证码').fill(code)
+        self.page.get_by_role('button', name='确 定').click()
 
-            # 等待跳转，判断是否仍在登录页
-            self.page.wait_for_timeout(1000)
-            if not self.page.get_by_role('link', name='logoJeecg Boot').count():
-                return  # 登录成功
+        # 判断是否登录成功
+        self.page.wait_for_timeout(1000)
+        if self.page.get_by_role('link', name='logoJeecg Boot').count():
+            raise LoginExpired('登录失效，需重新登录')
 
-        raise RuntimeError('验证码错误')
-
-    # 保存验证码图片
-    def save_captcha(self, path: str = 'captcha.png') -> bytes:
-        return (
-            self.page.get_by_role('tabpanel').get_by_role('img').screenshot(path=path)
-        )
+        logger.info('登录成功')
