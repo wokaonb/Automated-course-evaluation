@@ -2,8 +2,10 @@ import uuid
 from collections.abc import Callable
 from datetime import datetime
 from typing import Any
-
+import ddddocr
 from playwright.sync_api import Locator, Page
+
+_ocr = ddddocr.DdddOcr(show_ad=False)
 
 
 def format_time_with_today(hour: int) -> str:
@@ -26,8 +28,12 @@ def format_time_with_today(hour: int) -> str:
 
 
 def recognize_captcha(path: str) -> str:
-    """返回验证码字符串，人工或 OCR"""
-    return input(f'请输入 {path} 里的验证码：')
+    with open(path, 'rb') as f:
+        img_bytes = f.read()
+    text = _ocr.classification(img_bytes)
+    if not text:  # 识别为空
+        return input(f'识别为空，请人工输入 {path} 中的验证码：')
+    return text
 
 
 def highlight_element(
