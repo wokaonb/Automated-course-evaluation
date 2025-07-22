@@ -153,10 +153,6 @@ class CourseManagement:
             course_code,
             the_progress_of_the_curriculum,
         )
-        self.add_discuss(
-            course_code,
-            the_progress_of_the_curriculum,
-        )
 
     ALLOWED_USER_STATE = Literal[
         '请选择',

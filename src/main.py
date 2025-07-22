@@ -29,7 +29,9 @@ def run() -> None:
         for course in courses:
             with context.new_page() as cur_page:
                 manager_page = CourseManagement(cur_page)
+
                 cur_page.pause()
+
                 manager_page.add_schedule(
                     course.code,
                     course.progress,
@@ -49,7 +51,10 @@ def run() -> None:
                     course.progress,
                     course.users_leave,
                 )
-
+                manager_page.add_discuss(
+                    course.code,
+                    course.progress,
+                )
                 manager_page.set_user_state_discusses(
                     course.code,
                     course.progress,

@@ -13,14 +13,27 @@ _ocr = ddddocr.DdddOcr(show_ad=False)
 LOG_DIR = Path('logs')
 LOG_DIR.mkdir(exist_ok=True)
 
-log_file = LOG_DIR / 'app.log'
-log_file.write_text('')
+ARCHIVE_LIMIT = 3
+ARCHIVE_FMT = 'app-%Y%m%d-%H%M%S.log'
+
+current_log = LOG_DIR / 'app.log'
+if current_log.exists():
+    archive_name = datetime.now().strftime(ARCHIVE_FMT)
+    current_log.rename(LOG_DIR / archive_name)
+
+archives = sorted(
+    LOG_DIR.glob('app-*.log'), key=lambda p: p.stat().st_mtime, reverse=True
+)
+for old in archives[ARCHIVE_LIMIT:]:
+    old.unlink()
+
+current_log.touch()
 
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s [%(levelname)s] %(name)s | %(message)s',
     handlers=[
-        logging.FileHandler(LOG_DIR / 'app.log', encoding='utf-8'),
+        logging.FileHandler(current_log, encoding='utf-8'),
         logging.StreamHandler(sys.stdout),
     ],
 )
